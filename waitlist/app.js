@@ -21,11 +21,12 @@ async function count() {
 }
 function ticketRead(){try{return JSON.parse(localStorage.getItem(TICKET_KEY)||'null')}catch(_){return null}}
 function ticketSave(t){localStorage.setItem(TICKET_KEY,JSON.stringify(t));}
+function isCurrentTicket(t){const current=ticketRead();return !!current && current.id===t.id && current.token===t.token;}
 function ticketView(t){$('join-card').hidden=!!t; $('ticket').hidden=!t; if(t) $('ticket-id').textContent=t.id;}
 async function customerStatus(){
   const t=ticketRead(); if(!t)return;
-  try {const r=await api('status',t); $('ahead').textContent=r.ahead; $('count').textContent=r.count; $('status').textContent=r.status==='notified'?'已通知':'等候中'; $('forget').hidden=true;}
-  catch(e){message(e.message); if(e.message.includes('找不到候位')) {$('status').textContent='已結束或票證無效'; $('forget').hidden=false; $('cancel-self').disabled=true;}}
+  try {const r=await api('status',t); if(!isCurrentTicket(t))return; $('ahead').textContent=r.ahead; $('count').textContent=r.count; $('status').textContent=r.status==='notified'?'已通知':'等候中'; $('forget').hidden=true;}
+  catch(e){if(!isCurrentTicket(t))return; message(e.message); if(e.message.includes('找不到候位')) {$('status').textContent='已結束或票證無效'; $('forget').hidden=false; $('cancel-self').disabled=true;}}
 }
 async function withButton(button,fn){button.disabled=true;try{await fn()}catch(e){message(e.message)}finally{button.disabled=false}}
 if(document.body.dataset.page==='customer'){
