@@ -14,10 +14,12 @@ async function api(action, data={}) {
   if (!result.ok) throw new Error(result.error || '操作失敗');
   return result;
 }
+let countVersion=0;
 async function count() {
+  const version=++countVersion;
   if (API_URL.includes('REPLACE_WITH_DEPLOYMENT_ID')) {message('尚未設定後端網址，請依部署說明設定。');return;}
-  try { const r=await fetch(API_URL+'?action=count'); const j=await r.json(); if (!j.ok) throw Error(); $('count').textContent=j.count; }
-  catch (_) { $('count').textContent='—'; message('目前無法更新候位數，請檢查連線。'); }
+  try { const r=await fetch(API_URL+'?action=count'); const j=await r.json(); if (!j.ok) throw Error(); if(version!==countVersion)return; $('count').textContent=j.count; }
+  catch (_) { if(version!==countVersion)return; $('count').textContent='—'; message('目前無法更新候位數，請檢查連線。'); }
 }
 function ticketRead(){try{return JSON.parse(localStorage.getItem(TICKET_KEY)||'null')}catch(_){return null}}
 function ticketSave(t){localStorage.setItem(TICKET_KEY,JSON.stringify(t));}
@@ -31,8 +33,8 @@ async function customerStatus(){
 async function withButton(button,fn){button.disabled=true;try{await fn()}catch(e){message(e.message)}finally{button.disabled=false}}
 if(document.body.dataset.page==='customer'){
   ticketView(ticketRead()); count(); customerStatus(); setInterval(()=>{count();customerStatus()},5000);
-  $('join-form').addEventListener('submit',e=>{e.preventDefault(); const form=e.currentTarget; withButton(form.querySelector('button'),async()=>{message(''); const f=new FormData(form); const r=await api('join',{name:f.get('name'),gender:f.get('gender'),email:f.get('email'),partySize:Number(f.get('partySize'))}); try{ticketSave({id:r.id,token:r.token})}catch(_){message('已取得號碼，但瀏覽器無法保存票證；請聯絡員工。');return} ticketView(ticketRead()); $('ahead').textContent=r.ahead; $('count').textContent=r.count; $('status').textContent='等候中'; message('已加入候位。');});});
-  $('cancel-self').addEventListener('click',()=>{if(!confirm('確定取消您的候位？'))return; withButton($('cancel-self'),async()=>{const t=ticketRead();await api('cancelSelf',t);localStorage.removeItem(TICKET_KEY);ticketView(null);message('已取消候位。');count();});});
+  $('join-form').addEventListener('submit',e=>{e.preventDefault(); const form=e.currentTarget; withButton(form.querySelector('button'),async()=>{message(''); const f=new FormData(form); const r=await api('join',{name:f.get('name'),gender:f.get('gender'),email:f.get('email'),partySize:Number(f.get('partySize'))}); try{ticketSave({id:r.id,token:r.token})}catch(_){message('已取得號碼，但瀏覽器無法保存票證；請聯絡員工。');return} ++countVersion; ticketView(ticketRead()); $('ahead').textContent=r.ahead; $('count').textContent=r.count; $('status').textContent='等候中'; message('已加入候位。');});});
+  $('cancel-self').addEventListener('click',()=>{if(!confirm('確定取消您的候位？'))return; withButton($('cancel-self'),async()=>{const t=ticketRead();await api('cancelSelf',t);if(!t||!isCurrentTicket(t))return;localStorage.removeItem(TICKET_KEY);ticketView(null);message('已取消候位。');count();});});
   $('forget').addEventListener('click',()=>{localStorage.removeItem(TICKET_KEY);ticketView(null);$('cancel-self').disabled=false;message('已清除本機票證。');});
 }else{
   let key='', busy=false;
