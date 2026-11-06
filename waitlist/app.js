@@ -29,7 +29,7 @@ function ticketView(t){displayedTicket=t?{id:t.id,token:t.token}:null; $('join-c
 function syncTicket(){const current=ticketRead();ticketView(current);$('cancel-self').disabled=false;$('forget').hidden=true;$('ahead').textContent='—';$('status').textContent='更新中';message('票證已在另一分頁變更，請確認目前號碼。');if(current)customerStatus();}
 let statusSequence=0, statusApplied=0;
 async function customerStatus(){
-  const t=ticketRead(); if(!t)return; const sequence=++statusSequence;
+  const t=ticketRead(); if(!t){if(displayedTicket)syncTicket();return}if(!displayedTicket||displayedTicket.id!==t.id||displayedTicket.token!==t.token){syncTicket();return}const sequence=++statusSequence;
   try {const r=await api('status',t); if(!isCurrentTicket(t)||sequence<statusApplied)return; statusApplied=sequence; $('ahead').textContent=r.ahead; $('status').textContent=r.status==='notified'?'已通知':'等候中'; $('forget').hidden=true;}
   catch(e){if(!isCurrentTicket(t)||sequence<statusApplied)return; statusApplied=sequence; message(e.message); if(e.message.includes('找不到候位')) {$('status').textContent='已結束或票證無效'; $('forget').hidden=false; $('cancel-self').disabled=true;}}
 }
